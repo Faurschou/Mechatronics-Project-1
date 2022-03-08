@@ -48,7 +48,7 @@ void setup() {
   Wire.beginTransmission(0x68);
   Wire.write(0x3B);
   Wire.endTransmission(false);
-  Wire.requestFrom(0x68, 2 * 7, true); //en pakke er 8 bits. 3 sensorer, af datapakker 2.
+  Wire.requestFrom(0x68, 2 * 7, true); //en pakke er 8 bits. 7 sensorer, af datapakker 2.
 
   int16_t accelerometer_x = Wire.read() << 8 | Wire.read(); //16 bit, med 8 int af gangen. read 8 og skub 8 tal til venstre
   int16_t accelerometer_y = Wire.read() << 8 | Wire.read();
@@ -58,6 +58,7 @@ void setup() {
   int16_t gyro_y = Wire.read() << 8 | Wire.read();
   int16_t gyro_z = Wire.read() << 8 | Wire.read();
 
+  // Calibreringsloop, 10 målinger tages og bruges til at calibrerer gyroskopets nulværdier - Gyro'en skal vide hvornår den står stille.
   for (int i = 0; i < 10; i++) {
     Cal_x = Cal_x + gyro_x;
     Cal_y = Cal_y + gyro_y;
@@ -122,10 +123,15 @@ void loop() {
 
 
   // Vinkel med gyro, hvor accelerationscalibreringen benyttes som startværdi.
-  Vin_x_gyro = Vin_x_gyro + (((tid_n - tid_f) / 1000) * (((gyro_x + gyro_x_f) + Cal_x) / 131));
-  Vin_y_gyro = Vin_y_gyro + (((tid_n - tid_f) / 1000) * (((gyro_y + gyro_y_f) - Cal_y) / 131));
-  Vin_z_gyro = Vin_z_gyro + (((tid_n - tid_f) / 1000) * (((gyro_z + gyro_z_f) + Cal_z) / 131));
-  // OBS! værdierne (390, -125 og 0) er hårde kalibreringer, som varierer fra system til system. Hver gang at et nyt system initialiseres (eller en wire skiftes) skal disse tal genkalibreres, ved at kigge på den konstante værdi som (Vin_?_gyro outputter)..
+  Vin_x_gyro = Vin_x_gyro + (((tid_n - tid_f) / 1000) * (((gyro_x + gyro_x_f) + Cal_x) / 131)); // Pitch
+  Vin_y_gyro = Vin_y_gyro + (((tid_n - tid_f) / 1000) * (((gyro_y + gyro_y_f) - Cal_y) / 131)); // Roll
+  Vin_z_gyro = Vin_z_gyro + (((tid_n - tid_f) / 1000) * (((gyro_z + gyro_z_f) + Cal_z) / 131)); // Yaw
+  // OBS! værdierne (Cal_x, Cal_y, Cal_z) er hårde kalibreringer, som varierer fra system til system. Hver gang at et nyt system initialiseres (eller en wire skiftes) skal disse tal genkalibreres. (automatisk med kode i linje 61).
+  // OBS x2 !! Vær opmæørksom på, de 3 gyro værdier godt kan løbet lidt, imens den står stille, hvis dette sker:
+  // Genstart systemet, og lad calibreringen køre igen
+  // Dobbelttjek at alle wires har god forbindelse
+  // Hvis problemet fortsætter, forsøg af skift fortegn på "Cal_?".
+
 
 
   // Til LCD skærmen låses gyro-værdierne til hele tal imellem 0 og 360, for at simplificere implementeringen, og gøre plads til alle 3 tal påå skærmen samtidigt.
@@ -212,19 +218,6 @@ void loop() {
   // wait for signal to return
   // convert duration to distance in cm
   int MaxDistance_distance = 0.01715 * pulseIn(MaxDistance_echoPin, HIGH);
-
-  // Ultrasonic 'Out of Range' statement
-    if (MaxDistance_distance > 1000) {
-      Serial.print("Distance = ");
-      Serial.println("Out of Range");
-      Serial.println("-----");
-
-    } else {
-      Serial.print("Distance = ");
-      Serial.print(MaxDistance_distance);
-      Serial.println("cm");
-      Serial.println("-----");
-    }
 
 
   // Vinkler, temperatur og Ultrasound distancemåling printes til .csv filen.
