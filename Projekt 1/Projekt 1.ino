@@ -240,7 +240,16 @@ void loop() {
   Serial.print(",");
   Serial.print(temp / 340.00 + 36.53);
   Serial.print(",");
-  Serial.println(MaxDistance_distance);
+  Serial.print(",");
+  // Ultrasonic 'Out of Range' statement
+  if (MaxDistance_distance > 1000) {
+    Serial.println("Out of Range");
+
+  } else {
+    Serial.println(MaxDistance_distance);
+  }
+
+}
 
 }
 
